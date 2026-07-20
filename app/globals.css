@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark Luxury Palette from change1.md */
+  --primary-bg: #1F1713;
+  --secondary-bg: #2A1F1A;
+  --card-bg: #4B3628;
+  --champagne-gold: #E5C687;
+  --luxury-gold: #D4AF37;
+  --rose-gold: #C68A7A;
+  --copper: #A97142;
+  --warm-cream: #F7F3EE;
+  --text-primary: #FFFFFF;
+  --text-secondary: #F2E7D8;
+  --success: #4F7C57;
+  --error: #C94C4C;
+  --warning: #E4A949;
+
+  /* Legacy references kept for any missed usages */
+  --primary-accent: #E5C687;
+  --secondary-accent: #A97142;
+  --btn-brand: #D4AF37;
+}
+
+@theme {
+  --color-primary-bg: var(--primary-bg);
+  --color-secondary-bg: var(--secondary-bg);
+  --color-card-bg: var(--card-bg);
+  --color-champagne: var(--champagne-gold);
+  --color-luxury-gold: var(--luxury-gold);
+  --color-rose-gold: var(--rose-gold);
+  --color-copper: var(--copper);
+  --color-warm-cream: var(--warm-cream);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+
+  /* Legacy aliases */
+  --color-primary-accent: var(--champagne-gold);
+  --color-secondary-accent: var(--copper);
+  --color-btn-brand: var(--luxury-gold);
+
+  --font-playfair: var(--font-playfair), serif;
+  --font-cormorant: var(--font-cormorant), serif;
+  --font-poppins: var(--font-poppins), sans-serif;
+  --font-inter: var(--font-inter), sans-serif;
+
+  --radius-cards: 20px;
+  --radius-buttons: 12px;
+  --radius-inputs: 14px;
+  --radius-images: 24px;
+  --radius-chat: 28px;
+
+  --animate-shimmer: shimmer 2s infinite linear;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px 2px rgba(229, 198, 135, 0.4); }
+  50% { box-shadow: 0 0 28px 8px rgba(229, 198, 135, 0.8); }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Global body */
+body {
+  background-color: var(--primary-bg);
+  color: var(--text-primary);
+  font-family: var(--font-poppins);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Luxury Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--primary-bg); }
+::-webkit-scrollbar-thumb { background: var(--luxury-gold); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--champagne-gold); }
+
+/* Gradient Utilities */
+.gold-gradient {
+  background: linear-gradient(135deg, #D4AF37 0%, #E5C687 50%, #A97142 100%);
+}
+
+.dark-card {
+  background: linear-gradient(145deg, #4B3628 0%, #2A1F1A 100%);
+  border: 1px solid rgba(229, 198, 135, 0.15);
+}
+
+.glass-card {
+  background: rgba(75, 54, 40, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(229, 198, 135, 0.2);
+}
+
+.gold-text {
+  background: linear-gradient(135deg, #D4AF37, #E5C687);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.luxury-shadow {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(229, 198, 135, 0.1);
+}
+
+.gold-border {
+  border: 1px solid rgba(229, 198, 135, 0.3);
+}
+
+/* Confetti particles */
+.confetti-piece {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall linear forwards;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Animation utilities */
+.animate-fade-up { animation: fade-up 0.4s ease-out forwards; }
+.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
