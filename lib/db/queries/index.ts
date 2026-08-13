@@ -93,6 +93,29 @@ export function createPortfolioItem(item: Omit<PortfolioItem, 'created_at' | 'up
   );
 }
 
+export function getPortfolioItemById(id: string): PortfolioItem | null {
+  const stmt = db.prepare('SELECT * FROM portfolio WHERE id = ?');
+  return (stmt.get(id) as PortfolioItem) || null;
+}
+
+export function updatePortfolioItem(id: string, item: Partial<Omit<PortfolioItem, 'id' | 'created_at' | 'updated_at'>>): boolean {
+  const fields = Object.keys(item);
+  if (fields.length === 0) return false;
+
+  const sets = fields.map(field => `${field} = ?`).join(', ');
+  const values = fields.map(field => (item as any)[field]);
+
+  const stmt = db.prepare(`UPDATE portfolio SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
+  const result = stmt.run(...values, id);
+  return result.changes > 0;
+}
+
+export function deletePortfolioItem(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM portfolio WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
 // Story Queries
 export function getStories(): Story[] {
   const stmt = db.prepare('SELECT * FROM stories ORDER BY event_date DESC, created_at DESC');
