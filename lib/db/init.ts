@@ -224,4 +224,119 @@ export function initDb(db: Database) {
       }
     }
   }
+
+  // 7. Seed default bookings if table exists
+  const bookingsTableCheck = db.prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name='bookings'").get() as { count: number };
+  if (bookingsTableCheck && bookingsTableCheck.count > 0) {
+    try {
+      const defaultBookings = [
+        {
+          id: 'LC-8431',
+          customer_name: 'Ananya Sharma & Kabir',
+          customer_email: 'ananya@example.com',
+          customer_phone: '9876543210',
+          package_id: 'pkg-gold',
+          booking_date: '2026-11-18',
+          booking_time: '10:00 AM',
+          event_type: 'Wedding',
+          location: 'Taj Connemara, Chennai',
+          total_amount: '₹2,20,000',
+          payment_status: 'Pending',
+          booking_status: 'Pending Approval',
+          notes: JSON.stringify({
+            guestCount: 350,
+            coverageHours: 12,
+            addOns: ['Drone Cinematography', 'Luxury Linen Album'],
+            creditsEarned: 350,
+            creditsRedeemed: 0,
+            totalPaid: 0,
+            transactionId: '',
+            paymentMethod: '',
+            paymentReference: ''
+          })
+        },
+        {
+          id: 'LC-9284',
+          customer_name: 'Priya Patel & Rohan',
+          customer_email: 'priya@example.com',
+          customer_phone: '9812345678',
+          package_id: 'pkg-platinum',
+          booking_date: '2026-12-05',
+          booking_time: '08:00 AM',
+          event_type: 'Wedding',
+          location: 'ITC Grand Chola, Chennai',
+          total_amount: '₹3,50,000',
+          payment_status: 'Partially Paid',
+          booking_status: 'Confirmed',
+          notes: JSON.stringify({
+            guestCount: 500,
+            coverageHours: 18,
+            addOns: ['Pre-Wedding Shoot', 'Live Broadcast'],
+            creditsEarned: 500,
+            creditsRedeemed: 100,
+            totalPaid: 150000,
+            transactionId: 'TXN_98765',
+            paymentMethod: 'Credit Card',
+            paymentReference: 'UPI_92849'
+          })
+        },
+        {
+          id: 'LC-3492',
+          customer_name: 'Meera Nair & Arjun',
+          customer_email: 'meera@example.com',
+          customer_phone: '9944123456',
+          package_id: 'pkg-silver',
+          booking_date: '2026-07-22',
+          booking_time: '02:00 PM',
+          event_type: 'Engagement',
+          location: 'Leela Palace, Chennai',
+          total_amount: '₹1,20,000',
+          payment_status: 'Paid',
+          booking_status: 'Completed',
+          notes: JSON.stringify({
+            guestCount: 150,
+            coverageHours: 6,
+            addOns: [],
+            creditsEarned: 200,
+            creditsRedeemed: 0,
+            totalPaid: 120000,
+            transactionId: 'TXN_12345',
+            paymentMethod: 'Net Banking',
+            paymentReference: 'UPI_34920'
+          })
+        }
+      ];
+
+      const insertBooking = db.prepare(`
+        INSERT OR IGNORE INTO bookings (
+          id, customer_name, customer_email, customer_phone, package_id,
+          booking_date, booking_time, event_type, location, total_amount,
+          payment_status, booking_status, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      db.transaction(() => {
+        for (const b of defaultBookings) {
+          insertBooking.run(
+            b.id,
+            b.customer_name,
+            b.customer_email,
+            b.customer_phone,
+            b.package_id,
+            b.booking_date,
+            b.booking_time,
+            b.event_type,
+            b.location,
+            b.total_amount,
+            b.payment_status,
+            b.booking_status,
+            b.notes
+          );
+        }
+      })();
+      console.log('Seeded default bookings successfully.');
+    } catch (err) {
+      console.error('Error seeding default bookings:', err);
+    }
+  }
 }
