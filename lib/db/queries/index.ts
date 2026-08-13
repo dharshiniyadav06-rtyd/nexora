@@ -43,6 +43,27 @@ export function createPackage(pkg: Omit<Package, 'created_at' | 'updated_at'>): 
   );
 }
 
+export function updatePackage(id: string, pkg: Partial<Omit<Package, 'id' | 'created_at' | 'updated_at'>>): boolean {
+  const fields = Object.keys(pkg);
+  if (fields.length === 0) return false;
+
+  const sets = fields.map(field => `${field} = ?`).join(', ');
+  const values = fields.map(field => {
+    const val = (pkg as any)[field];
+    return typeof val === 'object' ? JSON.stringify(val) : val;
+  });
+
+  const stmt = db.prepare(`UPDATE packages SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
+  const result = stmt.run(...values, id);
+  return result.changes > 0;
+}
+
+export function deletePackage(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM packages WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
 // Portfolio Queries
 export function getPortfolioItems(): PortfolioItem[] {
   const stmt = db.prepare('SELECT * FROM portfolio ORDER BY display_order ASC, created_at DESC');
