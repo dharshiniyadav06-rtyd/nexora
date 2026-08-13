@@ -118,6 +118,165 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Stories CMS Manager states
+  const [stories, setStories] = useState<any[]>([]);
+  const [storiesLoading, setStoriesLoading] = useState(true);
+  const [storiesError, setStoriesError] = useState("");
+
+  const [storyTitle, setStoryTitle] = useState("");
+  const [storyDesc, setStoryDesc] = useState("");
+  const [storyCover, setStoryCover] = useState("");
+  const [storyCategory, setStoryCategory] = useState("Candid");
+  const [storyDate, setStoryDate] = useState("2026-08-13");
+  const [storyLocation, setStoryLocation] = useState("");
+  const [storyStatus, setStoryStatus] = useState("published");
+  const [storyQuote, setStoryQuote] = useState("");
+  const [storyQuoteAuthor, setStoryQuoteAuthor] = useState("");
+  const [storyPackageName, setStoryPackageName] = useState("Gold");
+  const [storyCoverage, setStoryCoverage] = useState("12 Hours / Full Day");
+  const [isCreatingStory, setIsCreatingStory] = useState(false);
+  const [storySuccess, setStorySuccess] = useState(false);
+  const [storyErrorMsg, setStoryErrorMsg] = useState("");
+
+  const fetchStories = async () => {
+    try {
+      setStoriesLoading(true);
+      const res = await fetch('/api/stories');
+      if (res.ok) {
+        const data = await res.json();
+        setStories(data);
+      } else {
+        setStoriesError("Failed to load love stories");
+      }
+    } catch (err) {
+      console.error(err);
+      setStoriesError("An error occurred while fetching love stories");
+    } finally {
+      setStoriesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStories();
+  }, []);
+
+  const handleCreateStory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!storyTitle.trim() || !storyDesc.trim() || !storyCover.trim()) return;
+
+    setIsCreatingStory(true);
+    setStoryErrorMsg("");
+    setStorySuccess(false);
+
+    const storyContent = {
+      tags: [storyCategory, "Real Wedding"],
+      testimonial: {
+        quote: storyQuote.trim() || "Everything was absolutely perfect. The team captured every laugh, tear, and celebration beautifully.",
+        author: storyQuoteAuthor.trim() || storyTitle.split("&")[0].trim() || "The Bride"
+      },
+      packageUsed: {
+        name: storyPackageName,
+        coverage: storyCoverage
+      },
+      timeline: [
+        {
+          time: "09:00 AM",
+          title: "Preparation & Portraits",
+          description: `Captured the emotional moments of the couple getting ready in ${storyLocation}.`,
+          image: storyCover
+        },
+        {
+          time: "03:30 PM",
+          title: "Garland Exchange",
+          description: `A stunning exchange of garlands under beautiful lighting.`,
+          image: storyCover
+        },
+        {
+          time: "07:30 PM",
+          title: "Reception Party",
+          description: `Cinematic highlight captures of the evening celebration.`,
+          image: storyCover
+        }
+      ]
+    };
+
+    const payload = {
+      id: `story-${Math.random().toString(36).substring(2, 11)}`,
+      title: storyTitle.trim(),
+      description: storyDesc.trim(),
+      cover_image: storyCover.trim(),
+      category: storyCategory,
+      event_date: storyDate,
+      location: storyLocation.trim(),
+      content: storyContent,
+      status: storyStatus
+    };
+
+    try {
+      const res = await fetch('/api/stories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setStorySuccess(true);
+        setStoryTitle("");
+        setStoryDesc("");
+        setStoryCover("");
+        setStoryDate("2026-08-13");
+        setStoryLocation("");
+        setStoryQuote("");
+        setStoryQuoteAuthor("");
+        fetchStories();
+        setTimeout(() => setStorySuccess(false), 3000);
+      } else {
+        const data = await res.json();
+        setStoryErrorMsg(data.error || 'Failed to create love story.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setStoryErrorMsg(err.message || 'An error occurred during submission.');
+    } finally {
+      setIsCreatingStory(false);
+    }
+  };
+
+  const handleDeleteStory = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this love story?")) return;
+    try {
+      const res = await fetch(`/api/stories/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setStories(prev => prev.filter(s => s.id !== id));
+      } else {
+        alert("Failed to delete love story");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error occurred while deleting story");
+    }
+  };
+
+  const handleToggleStoryStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'published' ? 'draft' : 'published';
+    try {
+      const res = await fetch(`/api/stories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        setStories(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
+      } else {
+        alert("Failed to update story status");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error occurred while updating story status");
+    }
+  };
+
   // Rewards Config edit state
   const [silverCred, setSilverCred] = useState(rewardConfig?.silverCredits || 200);
   const [goldCred, setGoldCred] = useState(rewardConfig?.goldCredits || 350);
@@ -632,6 +791,239 @@ export default function AdminDashboardPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Stories CMS Section (Split: 2/3 List, 1/3 Form) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* Left Side: Love Stories list */}
+                <div className="lg:col-span-2 glass-card p-6 rounded-cards border border-[rgba(229,198,135,0.15)] shadow-2xl flex flex-col gap-6">
+                  <div className="flex justify-between items-center border-b border-[rgba(229,198,135,0.15)] pb-3">
+                    <h3 className="font-playfair text-xl font-bold text-white">
+                      Manage Love Stories
+                    </h3>
+                    <span className="text-xs text-[#F2E7D8]/60">
+                      {stories.length} stories total
+                    </span>
+                  </div>
+
+                  {storiesLoading ? (
+                    <div className="py-12 flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-[#E5C687]"></div>
+                    </div>
+                  ) : storiesError ? (
+                    <div className="text-center text-xs text-[#C94C4C] py-8">
+                      {storiesError}
+                    </div>
+                  ) : stories.length === 0 ? (
+                    <div className="text-center text-xs text-[#F2E7D8]/50 py-12">
+                      No stories found. Create stories using the form on the right.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {stories.map((story) => (
+                        <div
+                          key={story.id}
+                          className="border border-[rgba(229,198,135,0.1)] p-4 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-[#2A1F1A]/35 hover:bg-[#4B3628]/20 transition-all duration-300"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-black/30 border border-white/5">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={story.cover_image}
+                                alt={story.title}
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1 font-light text-xs font-inter">
+                              <span className="font-semibold text-sm text-white font-poppins">{story.title}</span>
+                              <span className="text-[#E5C687] text-[10px] uppercase font-bold tracking-wider">{story.category} | {story.location}</span>
+                              <span className="text-[#F2E7D8]/60 text-[10px]">{story.event_date}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <button
+                              onClick={() => handleToggleStoryStatus(story.id, story.status)}
+                              className={`px-3 py-1.5 rounded-lg text-[9px] uppercase font-bold tracking-wider shadow border transition-all ${
+                                story.status === 'published'
+                                  ? 'bg-[#4F7C57]/15 border-[#4F7C57]/30 text-[#4F7C57] hover:bg-[#4F7C57]/30'
+                                  : 'bg-white/5 border-white/10 text-[#F2E7D8]/60 hover:bg-white/10'
+                              }`}
+                              title="Toggle Publish Status"
+                            >
+                              {story.status === 'published' ? 'Published' : 'Draft'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStory(story.id)}
+                              className="text-[#C94C4C] hover:text-[#C94C4C]/80 hover:bg-[#C94C4C]/10 p-2 rounded-lg transition-all"
+                              title="Delete Story"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Side: Create Love Story Form */}
+                <div className="glass-card p-6 rounded-cards border border-[rgba(229,198,135,0.15)] shadow-2xl flex flex-col gap-6">
+                  <h3 className="font-playfair text-xl font-bold text-white border-b border-[rgba(229,198,135,0.15)] pb-3">
+                    Create Story CMS
+                  </h3>
+
+                  <form onSubmit={handleCreateStory} className="flex flex-col gap-3.5 text-xs font-light">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                        Story Title (Couple Names)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Riya & Adithya"
+                        value={storyTitle}
+                        onChange={(e) => setStoryTitle(e.target.value)}
+                        className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.2)] px-3 py-2.5 rounded-xl text-white placeholder-white/20 focus:outline-none focus:border-[#E5C687]"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                        Cover Image URL
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://images.unsplash.com/..."
+                        value={storyCover}
+                        onChange={(e) => setStoryCover(e.target.value)}
+                        className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.2)] px-3 py-2.5 rounded-xl text-white placeholder-white/20 focus:outline-none focus:border-[#E5C687]"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                        Journey Description
+                      </label>
+                      <textarea
+                        required
+                        rows={2}
+                        placeholder="Describe their love journey and highlights..."
+                        value={storyDesc}
+                        onChange={(e) => setStoryDesc(e.target.value)}
+                        className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.2)] px-3 py-2 rounded-xl text-white placeholder-white/20 focus:outline-none focus:border-[#E5C687] resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                          Category/Style
+                        </label>
+                        <select
+                          value={storyCategory}
+                          onChange={(e) => setStoryCategory(e.target.value)}
+                          className="bg-[#1F1713]/80 border border-[rgba(229,198,135,0.2)] px-3 py-2.5 rounded-xl text-white focus:outline-none focus:border-[#E5C687] cursor-pointer"
+                        >
+                          <option value="Candid">Candid Romance</option>
+                          <option value="Luxury">Luxury Fine-Art</option>
+                          <option value="Editorial">Editorial Contrast</option>
+                          <option value="Traditional">Traditional South Indian</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                          Event Date
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={storyDate}
+                          onChange={(e) => setStoryDate(e.target.value)}
+                          className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.2)] px-3 py-2.5 rounded-xl text-white focus:outline-none focus:border-[#E5C687]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                          Location
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Chennai"
+                          value={storyLocation}
+                          onChange={(e) => setStoryLocation(e.target.value)}
+                          className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.2)] px-3 py-2.5 rounded-xl text-white placeholder-white/20 focus:outline-none focus:border-[#E5C687]"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
+                          Initial Status
+                        </label>
+                        <select
+                          value={storyStatus}
+                          onChange={(e) => setStoryStatus(e.target.value)}
+                          className="bg-[#1F1713]/80 border border-[rgba(229,198,135,0.2)] px-3 py-2.5 rounded-xl text-white focus:outline-none focus:border-[#E5C687] cursor-pointer"
+                        >
+                          <option value="published">Published</option>
+                          <option value="draft">Draft</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-white/5 pt-3 flex flex-col gap-3">
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-[#F2E7D8]/60">Journey Testimonial Details</span>
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="Lovely Quote (optional)"
+                          value={storyQuote}
+                          onChange={(e) => setStoryQuote(e.target.value)}
+                          className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.15)] px-3 py-2 rounded-xl text-white text-[11px]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="Quote Author (optional)"
+                          value={storyQuoteAuthor}
+                          onChange={(e) => setStoryQuoteAuthor(e.target.value)}
+                          className="bg-[#1F1713]/60 border border-[rgba(229,198,135,0.15)] px-3 py-2 rounded-xl text-white text-[11px]"
+                        />
+                      </div>
+                    </div>
+
+                    {storyErrorMsg && (
+                      <div className="bg-[#C94C4C]/15 border border-[#C94C4C]/30 text-[#C94C4C] p-3 rounded-xl flex items-center gap-2 font-semibold">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{storyErrorMsg}</span>
+                      </div>
+                    )}
+
+                    {storySuccess && (
+                      <div className="bg-[#4F7C57]/15 border border-[#4F7C57]/30 text-[#4F7C57] p-3 rounded-xl flex items-center gap-2 font-semibold animate-scale-in">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>Story created successfully!</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isCreatingStory}
+                      className="w-full gold-gradient text-[#1F1713] py-3 rounded-xl text-xs uppercase tracking-widest font-bold shadow hover:opacity-95 disabled:opacity-50 mt-1"
+                    >
+                      {isCreatingStory ? "Creating..." : "Save Love Story"}
+                    </button>
+                  </form>
+                </div>
+
               </div>
 
             </div>
