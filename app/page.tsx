@@ -7,6 +7,41 @@ import { Camera, Calendar, ArrowRight, Sparkles, Star, Check, Users, ShieldCheck
 
 export default function Home() {
   const [offsetY, setOffsetY] = useState(0);
+  const [stories, setStories] = useState(weddingStoriesData);
+  
+  useEffect(() => {
+    const loadStories = async () => {
+      try {
+        const res = await fetch('/api/stories');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const mappedStories = data.map((story: any) => {
+              let contentObj = {};
+              try {
+                contentObj = JSON.parse(story.content || '{}');
+              } catch (e) {
+                console.error('Failed to parse story content JSON:', e);
+              }
+              return {
+                ...contentObj,
+                id: story.id,
+                title: story.title,
+                heroImage: story.cover_image,
+                style: story.category,
+                weddingDate: story.event_date,
+                location: story.location
+              };
+            });
+            setStories(mappedStories);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load stories:', err);
+      }
+    };
+    loadStories();
+  }, []);
 
   // Parallax Hero Effect
   useEffect(() => {
@@ -124,7 +159,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {weddingStoriesData.map((story) => (
+            {stories.map((story) => (
               <div key={story.id} className="glass-card rounded-cards overflow-hidden shadow-2xl group hover:-translate-y-1 transition-all duration-300">
                 <div className="h-64 relative overflow-hidden">
                   <img

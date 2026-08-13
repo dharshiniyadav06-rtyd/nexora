@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { weddingStoriesData } from "@/services/mockData";
 import { Camera, Heart, Share2, Eye, X, ZoomIn, Info, Sparkles, Filter } from "lucide-react";
@@ -29,25 +29,83 @@ export default function PortfolioPage() {
   const [shareCopied, setShareCopied] = useState(false);
 
   // Extract all gallery images from stories data and attach parent story details
-  const allImages: GalleryItem[] = [];
-  weddingStoriesData.forEach((story) => {
-    story.gallery.forEach((img) => {
-      allImages.push({
-        ...img,
-        storyId: story.id,
-        coupleName: story.coupleName,
-        location: story.location,
-        date: story.weddingDate
+  const getInitialGallery = (): GalleryItem[] => {
+    const allImages: GalleryItem[] = [];
+    weddingStoriesData.forEach((story) => {
+      story.gallery.forEach((img) => {
+        allImages.push({
+          ...img,
+          storyId: story.id,
+          coupleName: story.coupleName,
+          location: story.location,
+          date: story.weddingDate
+        });
       });
     });
-  });
+    return allImages;
+  };
+
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(getInitialGallery());
+
+  useEffect(() => {
+    const loadPortfolio = async () => {
+      try {
+        const res = await fetch('/api/portfolio');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const mappedItems: GalleryItem[] = data.map((item: any) => {
+              let storyId = 'story-priya-arjun';
+              let coupleName = 'Priya & Arjun';
+              let date = '2026-01-14';
+              
+              if (item.id.startsWith('dk-')) {
+                storyId = 'story-divya-karthik';
+                coupleName = 'Divya & Karthik';
+                date = '2026-02-20';
+              } else if (item.id.startsWith('av-')) {
+                storyId = 'story-ananya-vikram';
+                coupleName = 'Ananya & Vikram';
+                date = '2026-03-08';
+              }
+
+              let lens = 'Sony FE 85mm f/1.4';
+              let lighting = 'Morning Temple Light';
+              if (item.description && item.description.includes(' with ')) {
+                const parts = item.description.split(' with ');
+                lens = parts[0];
+                lighting = parts[1];
+              }
+
+              return {
+                id: item.id,
+                url: item.image_url,
+                category: item.category,
+                style: item.event_type || 'Candid',
+                location: item.location || 'Chennai',
+                lens: lens,
+                lighting: lighting,
+                storyId: storyId,
+                coupleName: coupleName,
+                date: date
+              };
+            });
+            setGalleryItems(mappedItems);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load portfolio:', err);
+      }
+    };
+    loadPortfolio();
+  }, []);
 
   // Unique lists for filters
   const categories = ["All", "Wedding", "Bridal Portrait", "Baraat", "Reception", "Mehendi"];
   const styles = ["All", "Candid", "Luxury", "Editorial", "Traditional", "Documentary"];
 
   // Filter logic
-  const filteredImages = allImages.filter((item) => {
+  const filteredImages = galleryItems.filter((item) => {
     const matchesCat = selectedCategory === "All" || item.category === selectedCategory;
     const matchesStyle = selectedStyle === "All" || item.style === selectedStyle;
     return matchesCat && matchesStyle;

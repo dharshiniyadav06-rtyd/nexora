@@ -37,18 +37,42 @@ export default function LoginPage() {
       return;
     }
 
-    setLoading(true);
-
-    // Simulate authentication
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess(true);
-      login(email, role);
-      
+    if (role === "Admin") {
+      setLoading(true);
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      .then((res) => {
+        if (!res.ok) {
+          return res.json().then(d => { throw new Error(d.error || 'Invalid credentials') });
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setLoading(false);
+        setSuccess(true);
+        login(email, "Admin");
+        setTimeout(() => {
+          router.push("/admin");
+        }, 1000);
+      })
+      .catch((err) => {
+        setLoading(false);
+        setError(err.message || "Failed to log in.");
+      });
+    } else {
+      setLoading(true);
       setTimeout(() => {
-        router.push(role === "Admin" ? "/admin" : "/dashboard");
-      }, 1000);
-    }, 1500);
+        setLoading(false);
+        setSuccess(true);
+        login(email, role);
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1000);
+      }, 1500);
+    }
   };
 
   const handleGuestLogin = () => {

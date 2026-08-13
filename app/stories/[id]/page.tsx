@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState } from "react";
+import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
@@ -13,8 +13,37 @@ export default function StoryDetailsPage({ params }: { params: Promise<{ id: str
   const { favorites, toggleFavorite } = useApp();
   const [shareCopied, setShareCopied] = useState(false);
 
-  // Find the story matching the ID
-  const story = weddingStoriesData.find((s) => s.id === id);
+  // Find the story matching the ID with fallback to mock data
+  const [story, setStory] = useState<any>(weddingStoriesData.find((s) => s.id === id));
+
+  useEffect(() => {
+    const loadStory = async () => {
+      try {
+        const res = await fetch(`/api/stories/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          let contentObj = {};
+          try {
+            contentObj = JSON.parse(data.content || '{}');
+          } catch (e) {
+            console.error('Failed to parse story content:', e);
+          }
+          setStory({
+            ...contentObj,
+            id: data.id,
+            title: data.title,
+            heroImage: data.cover_image,
+            style: data.category,
+            weddingDate: data.event_date,
+            location: data.location
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch story details:', err);
+      }
+    };
+    loadStory();
+  }, [id]);
 
   if (!story) {
     return (
@@ -56,7 +85,7 @@ export default function StoryDetailsPage({ params }: { params: Promise<{ id: str
         {/* Hero details Overlay */}
         <div className="relative z-10 p-8 md:p-16 max-w-4xl flex flex-col gap-4 text-white">
           <div className="flex flex-wrap gap-2">
-            {story.tags.map((tag, idx) => (
+            {story.tags && (story.tags as string[]).map((tag: string, idx: number) => (
               <span
                 key={idx}
                 className="bg-[#E5C687]/15 text-[#E5C687] border border-[rgba(229,198,135,0.3)] text-[9px] uppercase tracking-widest font-semibold px-3 py-1 rounded"
@@ -143,7 +172,7 @@ export default function StoryDetailsPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="relative border-l border-[rgba(229,198,135,0.15)] ml-4 md:ml-32 pl-8 md:pl-12 flex flex-col gap-16 py-8">
-          {story.timeline.map((event, index) => (
+          {story.timeline && (story.timeline as any[]).map((event: any, index: number) => (
             <div key={index} className="relative flex flex-col md:flex-row gap-8 items-start group">
               
               {/* Chronological Time marker on the left (Desktop) */}
@@ -188,7 +217,7 @@ export default function StoryDetailsPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {story.behindTheScenes.map((bts, index) => (
+            {story.behindTheScenes && (story.behindTheScenes as any[]).map((bts: any, index: number) => (
               <div key={index} className="flex flex-col gap-3 group" style={{ contentVisibility: 'auto' }}>
                 <div className="h-64 rounded-images overflow-hidden border border-[rgba(229,198,135,0.1)] shadow-2xl relative">
                   <img

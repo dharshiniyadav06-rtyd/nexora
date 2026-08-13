@@ -124,55 +124,57 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     { id: "CAMP-2", name: "Early Booking Bonus", multiplier: 1.5, description: "Book 6 months in advance to receive 1.5x credits.", isActive: false, expiry: "2026-09-30" }
   ]);
 
-  // Load initial simulated data
+  // Synchronize bookings with SQLite API
   useEffect(() => {
-    setBookings([
-      {
-        id: "LC-1024",
-        coupleName: "Ananya & Rahul",
-        email: "ananya@example.com",
-        phone: "+91 98400 12345",
-        eventType: "Wedding",
-        date: "2026-08-15",
-        venue: "Taj Lake Palace, Udaipur",
-        guestCount: 350,
-        coverageHours: 12,
-        packageName: "Platinum",
-        price: "₹3,50,000",
-        status: "Editing In Progress",
-        paymentStatus: "Paid",
-        addOns: ["Drone Coverage", "Live Streaming"],
-        creditsEarned: 500,
-        creditsRedeemed: 200,
-        transactionId: "TXN-98218201",
-        paymentMethod: "Credit Card",
-        paymentReference: "REF-CC-829102",
-        totalPaid: 350000
-      },
-      {
-        id: "LC-1025",
-        coupleName: "Meera & Vikram",
-        email: "meera.v@example.com",
-        phone: "+91 99887 76655",
-        eventType: "Engagement",
-        date: "2026-09-22",
-        venue: "Leela Palace, Bengaluru",
-        guestCount: 150,
-        coverageHours: 6,
-        packageName: "Gold",
-        price: "₹1,80,000",
-        status: "Confirmed",
-        paymentStatus: "Partially Paid",
-        addOns: ["Pre-Wedding Shoot"],
-        creditsEarned: 350,
-        creditsRedeemed: 0,
-        transactionId: "TXN-71928120",
-        paymentMethod: "UPI (GPay)",
-        paymentReference: "REF-UPI-018274",
-        totalPaid: 90000
+    const fetchBookings = async () => {
+      if (!isLoggedIn || !user) {
+        setBookings([]);
+        return;
       }
-    ]);
-  }, []);
+      try {
+        const url = user.role === 'Admin' ? '/api/bookings' : `/api/bookings?email=${encodeURIComponent(user.email)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const mappedBookings: Booking[] = data.map((b: any) => {
+            let notesObj: any = {};
+            try {
+              notesObj = JSON.parse(b.notes || '{}');
+            } catch (e) {
+              console.error('Failed to parse booking notes JSON:', e);
+            }
+            
+            return {
+              id: b.id,
+              coupleName: b.customer_name,
+              email: b.customer_email,
+              phone: b.customer_phone,
+              eventType: b.event_type,
+              date: b.booking_date,
+              venue: b.location,
+              packageName: b.package_id ? b.package_id.replace('pkg-', '').replace(/^\w/, (c: string) => c.toUpperCase()) : 'Custom',
+              price: b.total_amount,
+              status: b.booking_status,
+              paymentStatus: b.payment_status,
+              guestCount: notesObj.guestCount || 0,
+              coverageHours: notesObj.coverageHours || 0,
+              addOns: notesObj.addOns || [],
+              creditsEarned: notesObj.creditsEarned || 0,
+              creditsRedeemed: notesObj.creditsRedeemed || 0,
+              totalPaid: notesObj.totalPaid || 0,
+              transactionId: notesObj.transactionId || '',
+              paymentMethod: notesObj.paymentMethod || '',
+              paymentReference: notesObj.paymentReference || ''
+            };
+          });
+          setBookings(mappedBookings);
+        }
+      } catch (err) {
+        console.error('Failed to fetch bookings:', err);
+      }
+    };
+    fetchBookings();
+  }, [isLoggedIn, user]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) =>
@@ -180,7 +182,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     );
   };
 
-  const addBooking = (bookingData: Omit<Booking, "id" | "status" | "paymentStatus" | "creditsEarned" | "creditsRedeemed" | "totalPaid">) => {
+  const addBooking = async (bookingData: Omit<Booking, "id" | "status" | "paymentStatus" | "creditsEarned" | "creditsRedeemed" | "totalPaid">) => {
     // Determine reward credit earnings based on config and active campaigns
     let baseCredits = 350;
     if (bookingData.packageName === "Silver") baseCredits = rewardConfig.silverCredits;
@@ -194,8 +196,6 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const creditsEarnedVal = baseCredits * activeMultiplier;
 
-    const priceNum = parseInt(bookingData.price.replace(/[^0-9]/g, ""), 10) || 0;
-
     const newBooking: Booking = {
       ...bookingData,
       id: `LC-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -205,32 +205,73 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       creditsRedeemed: 0,
       totalPaid: 0
     };
-    setBookings((prev) => [newBooking, ...prev]);
 
-    // Automatically add credits when completed, but let's log the earnings projection
-    setRewardsEarned((prev) => prev + creditsEarnedVal);
-    setRewardsBalance((prev) => prev + creditsEarnedVal);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking)
+      });
+      if (res.ok) {
+        setBookings((prev) => [newBooking, ...prev]);
+        setRewardsEarned((prev) => prev + creditsEarnedVal);
+        setRewardsBalance((prev) => prev + creditsEarnedVal);
+      }
+    } catch (error) {
+      console.error('Failed to create booking in DB:', error);
+    }
   };
 
-  const addBookingWithPayment = (newBooking: Booking) => {
-    setBookings((prev) => [newBooking, ...prev]);
-    
-    // Add reward credits to client profile balance on successful checkout
-    setRewardsEarned((prev) => prev + newBooking.creditsEarned);
-    setRewardsBalance((prev) => prev + newBooking.creditsEarned - newBooking.creditsRedeemed);
-    setRewardsRedeemed((prev) => prev + newBooking.creditsRedeemed);
+  const addBookingWithPayment = async (newBooking: Booking) => {
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking)
+      });
+      if (res.ok) {
+        setBookings((prev) => [newBooking, ...prev]);
+        setRewardsEarned((prev) => prev + newBooking.creditsEarned);
+        setRewardsBalance((prev) => prev + newBooking.creditsEarned - newBooking.creditsRedeemed);
+        setRewardsRedeemed((prev) => prev + newBooking.creditsRedeemed);
+      }
+    } catch (error) {
+      console.error('Failed to create booking with payment in DB:', error);
+    }
   };
 
-  const updateBookingStatus = (id: string, status: Booking["status"]) => {
-    setBookings((prev) =>
-      prev.map((booking) => (booking.id === id ? { ...booking, status } : booking))
-    );
+  const updateBookingStatus = async (id: string, status: Booking["status"]) => {
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        setBookings((prev) =>
+          prev.map((booking) => (booking.id === id ? { ...booking, status } : booking))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to update booking status in DB:', error);
+    }
   };
 
-  const updatePaymentStatus = (id: string, paymentStatus: Booking["paymentStatus"]) => {
-    setBookings((prev) =>
-      prev.map((booking) => (booking.id === id ? { ...booking, paymentStatus } : booking))
-    );
+  const updatePaymentStatus = async (id: string, paymentStatus: Booking["paymentStatus"]) => {
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus })
+      });
+      if (res.ok) {
+        setBookings((prev) =>
+          prev.map((booking) => (booking.id === id ? { ...booking, paymentStatus } : booking))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to update payment status in DB:', error);
+    }
   };
 
   const login = (email: string, role: "Customer" | "Admin" = "Customer") => {

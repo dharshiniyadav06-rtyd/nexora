@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
-import { packagesData } from "@/services/mockData";
+import { packagesData, PackageTier } from "@/services/mockData";
 import { Check, X, Sparkles, Sliders, ChevronDown, ChevronUp, Bot, HelpCircle, ArrowRight, CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 
@@ -11,6 +11,47 @@ export default function PackagesPage() {
   const router = useRouter();
   const { toggleFavorite } = useApp();
   
+  const [packages, setPackages] = useState<PackageTier[]>(packagesData);
+  
+  useEffect(() => {
+    const loadPackages = async () => {
+      try {
+        const res = await fetch('/api/packages');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const mappedPackages: PackageTier[] = data.map((pkg: any) => {
+              let features: string[] = [];
+              try {
+                features = JSON.parse(pkg.included_services || '[]');
+              } catch (e) {
+                console.error('Failed to parse package features JSON:', e);
+              }
+              return {
+                id: pkg.id,
+                name: pkg.name,
+                description: pkg.description,
+                price: pkg.price,
+                coverage: pkg.duration,
+                photographers: pkg.photographer_count === 2 ? "1 Traditional + 1 Candid Photographer" :
+                               pkg.photographer_count === 4 ? "2 Candid + 1 Traditional Photographer + 1 Videographer" :
+                               pkg.photographer_count === 6 ? "2 Candid + 2 Traditional Photographers + 2 Cinematographers" :
+                               "Chief Photographer + 3 Candid + 2 Traditional + 3 Cinematographers",
+                features: features,
+                recommended: pkg.id === 'pkg-platinum',
+                deliveryTime: pkg.id === 'pkg-silver' ? '45 Days' : pkg.id === 'pkg-gold' ? '30 Days' : pkg.id === 'pkg-platinum' ? '20 Days' : '15 Days'
+              };
+            });
+            setPackages(mappedPackages);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load packages:', err);
+      }
+    };
+    loadPackages();
+  }, []);
+
   // Package Compare Accordion Toggle
   const [showMatrix, setShowMatrix] = useState(false);
 
@@ -118,7 +159,7 @@ export default function PackagesPage() {
 
     setMatchedPackage({
       name: pkgName,
-      price: packagesData.find((p) => p.name === pkgName)?.price || "₹2,20,000",
+      price: packages.find((p) => p.name === pkgName)?.price || "₹2,20,000",
       confidence,
       explanation
     });
@@ -169,7 +210,7 @@ export default function PackagesPage() {
 
       {/* STANDARD PACKAGE PRICE CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {packagesData.map((pkg) => (
+        {packages.map((pkg) => (
           <div
             key={pkg.id}
             className={`glass-card rounded-cards p-6 flex flex-col justify-between shadow-2xl transition-all duration-300 border ${
