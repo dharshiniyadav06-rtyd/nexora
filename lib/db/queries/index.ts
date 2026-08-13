@@ -145,6 +145,24 @@ export function createStory(story: Omit<Story, 'created_at' | 'updated_at'>): vo
   );
 }
 
+export function updateStory(id: string, story: Partial<Omit<Story, 'id' | 'created_at' | 'updated_at'>>): boolean {
+  const fields = Object.keys(story);
+  if (fields.length === 0) return false;
+
+  const sets = fields.map(field => `${field} = ?`).join(', ');
+  const values = fields.map(field => (story as any)[field]);
+
+  const stmt = db.prepare(`UPDATE stories SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
+  const result = stmt.run(...values, id);
+  return result.changes > 0;
+}
+
+export function deleteStory(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM stories WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
 // Booking Queries
 export function getBookings(): Booking[] {
   const stmt = db.prepare('SELECT * FROM bookings ORDER BY booking_date DESC');
