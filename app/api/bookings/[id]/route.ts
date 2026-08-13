@@ -1,45 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db/database';
+import { getBookingById, updateBooking, deleteBooking } from '@/lib/db/queries';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  let id = '';
+  try {
+    id = (await params).id;
+    const booking = getBookingById(id);
+    if (!booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+    return NextResponse.json(booking);
+  } catch (error: any) {
+    console.error(`Error fetching booking ${id}:`, error);
+    return NextResponse.json({ error: error.message || 'Failed to fetch booking' }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let id = '';
   try {
-    const { id } = await params;
+    id = (await params).id;
+    const existingBooking = getBookingById(id);
+    if (!existingBooking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     
     // Determine which fields to update
-    const updates: string[] = [];
-    const values: any[] = [];
+    const updates: any = {};
     
     if (body.status !== undefined || body.booking_status !== undefined) {
-      updates.push('booking_status = ?');
-      values.push(body.status !== undefined ? body.status : body.booking_status);
+      updates.booking_status = body.status !== undefined ? body.status : body.booking_status;
     }
     
     if (body.paymentStatus !== undefined || body.payment_status !== undefined) {
-      updates.push('payment_status = ?');
-      values.push(body.paymentStatus !== undefined ? body.paymentStatus : body.payment_status);
+      updates.payment_status = body.paymentStatus !== undefined ? body.paymentStatus : body.payment_status;
     }
 
     if (body.notes !== undefined) {
-      updates.push('notes = ?');
-      values.push(body.notes);
+      updates.notes = body.notes;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
-    values.push(id); // for the WHERE id = ? clause
-
-    const sql = `UPDATE bookings SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
-    const stmt = db.prepare(sql);
-    const result = stmt.run(...values);
-
-    if (result.changes === 0) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    const result = updateBooking(id, updates);
+    if (!result) {
+      return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'Booking updated successfully' });
@@ -55,4 +70,22 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return PATCH(request, { params });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  let id = '';
+  try {
+    id = (await params).id;
+    const deleted = deleteBooking(id);
+    if (!deleted) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, message: 'Booking deleted successfully' });
+  } catch (error: any) {
+    console.error(`Error deleting booking ${id}:`, error);
+    return NextResponse.json({ error: error.message || 'Failed to delete booking' }, { status: 500 });
+  }
 }

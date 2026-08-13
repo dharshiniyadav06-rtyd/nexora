@@ -203,3 +203,21 @@ export function createBooking(booking: Omit<Booking, 'created_at' | 'updated_at'
     booking.notes
   );
 }
+
+export function updateBooking(id: string, booking: Partial<Omit<Booking, 'id' | 'created_at' | 'updated_at'>>): boolean {
+  const fields = Object.keys(booking);
+  if (fields.length === 0) return false;
+
+  const sets = fields.map(field => `${field} = ?`).join(', ');
+  const values = fields.map(field => (booking as any)[field]);
+
+  const stmt = db.prepare(`UPDATE bookings SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
+  const result = stmt.run(...values, id);
+  return result.changes > 0;
+}
+
+export function deleteBooking(id: string): boolean {
+  const stmt = db.prepare('DELETE FROM bookings WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
