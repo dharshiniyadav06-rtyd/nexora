@@ -31,6 +31,8 @@ export default function AdminDashboardPage() {
   const [lighting, setLighting] = useState("Golden Hour Natural Light");
   const [style, setStyle] = useState("Candid");
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   // Rewards Config edit state
   const [silverCred, setSilverCred] = useState(rewardConfig?.silverCredits || 200);
@@ -65,13 +67,43 @@ export default function AdminDashboardPage() {
     return b.status === selectedStatusFilter;
   });
 
-  const handleSimulatedUpload = (e: React.FormEvent) => {
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!imgUrl.trim()) return;
 
-    setUploadSuccess(true);
-    setImgUrl("");
-    setTimeout(() => setUploadSuccess(false), 3000);
+    setUploadError("");
+    setUploadSuccess(false);
+    setIsUploading(true);
+
+    try {
+      const res = await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_url: imgUrl,
+          title: `${category} Photoshoot`,
+          category: category,
+          description: `${lens} with ${lighting}`,
+          event_type: style,
+          location: 'Chennai'
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setUploadSuccess(true);
+        setImgUrl("");
+        setTimeout(() => setUploadSuccess(false), 3000);
+      } else {
+        setUploadError(data.error || 'Failed to upload portfolio item.');
+      }
+    } catch (err: any) {
+      console.error('Portfolio upload error:', err);
+      setUploadError(err.message || 'An error occurred during upload.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSaveConfig = (e: React.FormEvent) => {
@@ -334,7 +366,7 @@ export default function AdminDashboardPage() {
                   Portfolio CMS Editor
                 </h3>
 
-                <form onSubmit={handleSimulatedUpload} className="flex flex-col gap-4 text-xs font-light">
+                <form onSubmit={handleUpload} className="flex flex-col gap-4 text-xs font-light">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[9px] uppercase tracking-wider font-bold text-[#E5C687]">
                       Image Source URL
@@ -406,6 +438,13 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
 
+                  {uploadError && (
+                    <div className="bg-[#C94C4C]/15 border border-[#C94C4C]/30 text-[#C94C4C] p-3.5 rounded-xl flex items-center gap-2 font-semibold animate-scale-in">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{uploadError}</span>
+                    </div>
+                  )}
+
                   {uploadSuccess && (
                     <div className="bg-[#4F7C57]/15 border border-[#4F7C57]/30 text-[#4F7C57] p-3.5 rounded-xl flex items-center gap-2 font-semibold animate-scale-in">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -415,9 +454,10 @@ export default function AdminDashboardPage() {
 
                   <button
                     type="submit"
-                    className="w-full gold-gradient text-[#1F1713] py-3 rounded-xl text-xs uppercase tracking-widest font-bold shadow-md hover:opacity-95 transition-all mt-2"
+                    disabled={isUploading}
+                    className="w-full gold-gradient text-[#1F1713] py-3 rounded-xl text-xs uppercase tracking-widest font-bold shadow-md hover:opacity-95 transition-all mt-2 disabled:opacity-50"
                   >
-                    Simulate Upload Image
+                    {isUploading ? "Uploading..." : "Upload to Portfolio"}
                   </button>
                 </form>
               </div>
