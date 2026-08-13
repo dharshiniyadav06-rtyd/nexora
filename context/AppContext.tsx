@@ -101,6 +101,25 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     "Pose Ideas": [],
   });
 
+  // Restore session from HTTP-only cookie on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/admin/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated) {
+            setIsLoggedIn(true);
+            setUser(data.user);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking active session:', error);
+      }
+    };
+    checkSession();
+  }, []);
+
   // Rewards & Referrals state
   const [rewardsBalance, setRewardsBalance] = useState<number>(350); // Initial welcome credits + some booking activity
   const [rewardsEarned, setRewardsEarned] = useState<number>(550);
@@ -288,6 +307,9 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const logout = () => {
+    fetch('/api/admin/logout', { method: 'POST' }).catch((err) => {
+      console.error('Failed to clear session on API:', err);
+    });
     setIsLoggedIn(false);
     setUser(null);
   };

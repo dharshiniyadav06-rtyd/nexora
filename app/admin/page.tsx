@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp, Booking, RewardCampaign } from "@/context/AppContext";
+import { useRouter } from "next/navigation";
 import { Users, Calendar, Camera, TrendingUp, Check, X, AlertCircle, FileSpreadsheet, Plus, Sparkles, CheckCircle2, DollarSign, RefreshCw, Settings, Gift, List, Eye } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -18,8 +19,47 @@ export default function AdminDashboardPage() {
     rewardsEarned,
     rewardsRedeemed,
     earnCredits,
-    redeemCredits
+    redeemCredits,
+    isLoggedIn,
+    login,
+    logout
   } = useApp();
+
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      try {
+        const res = await fetch('/api/admin/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user.role.toLowerCase() === 'admin') {
+            setAuthorized(true);
+            if (!isLoggedIn) {
+              login(data.user.email, "Admin");
+            }
+          } else {
+            setAuthorized(false);
+            router.push('/login');
+          }
+        } else {
+          setAuthorized(false);
+          router.push('/login');
+        }
+      } catch (err) {
+        console.error('Admin verification error:', err);
+        setAuthorized(false);
+        router.push('/login');
+      }
+    };
+    verifyAdmin();
+  }, [isLoggedIn, login, router]);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   const [activeTab, setActiveTab] = useState<"bookings" | "payments" | "rewards">("bookings");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("All");
@@ -146,20 +186,36 @@ export default function AdminDashboardPage() {
     setTimeout(() => setManualSuccess(false), 3000);
   };
 
+  if (authorized === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1F1713] text-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#E5C687]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen py-16 px-4 md:px-8 max-w-7xl mx-auto flex flex-col gap-12 font-poppins selection:bg-[#E5C687] selection:text-[#1F1713] text-white">
       
       {/* Header */}
-      <div className="flex flex-col gap-2 mt-10 border-b border-[rgba(229,198,135,0.15)] pb-8">
-        <span className="text-xs tracking-[0.2em] font-semibold text-[#E5C687] uppercase">
-          Studio Operations
-        </span>
-        <h1 className="font-playfair text-3xl md:text-4xl font-bold text-white">
-          Studio Admin Portal
-        </h1>
-        <p className="text-xs md:text-sm text-[#F2E7D8]/80 leading-relaxed font-light font-inter">
-          Manage bookings status, verify client gateway payments, refund deposits, customize reward credit values, and dispatch promo codes.
-        </p>
+      <div className="flex justify-between items-center mt-10 border-b border-[rgba(229,198,135,0.15)] pb-8 flex-wrap gap-4">
+        <div className="flex flex-col gap-2">
+          <span className="text-xs tracking-[0.2em] font-semibold text-[#E5C687] uppercase">
+            Studio Operations
+          </span>
+          <h1 className="font-playfair text-3xl md:text-4xl font-bold text-white">
+            Studio Admin Portal
+          </h1>
+          <p className="text-xs md:text-sm text-[#F2E7D8]/80 leading-relaxed font-light font-inter">
+            Manage bookings status, verify client gateway payments, refund deposits, customize reward credit values, and dispatch promo codes.
+          </p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="border border-[#C94C4C] text-[#C94C4C] hover:bg-[#C94C4C]/10 px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest font-semibold transition-all duration-300 shadow-md"
+        >
+          Log Out
+        </button>
       </div>
 
       {/* 1. ANALYTICS METRIC CARDS */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getAdminByEmail } from '@/lib/db/queries';
+import { setSession } from '@/lib/session';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,14 +22,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
     
+    const user = {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role
+    };
+    
+    // Persist authenticated session
+    await setSession(user);
+    
     return NextResponse.json({
       success: true,
-      user: {
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role
-      }
+      user
     });
   } catch (error: any) {
     console.error('Admin login API error:', error);
