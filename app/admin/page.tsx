@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useApp, Booking, RewardCampaign } from "@/context/AppContext";
 import { useRouter } from "next/navigation";
-import { Users, Calendar, Camera, TrendingUp, Check, X, AlertCircle, FileSpreadsheet, Plus, Sparkles, CheckCircle2, DollarSign, RefreshCw, Settings, Gift, List, Eye } from "lucide-react";
+import { Users, Calendar, Camera, TrendingUp, Check, X, AlertCircle, FileSpreadsheet, Plus, Sparkles, CheckCircle2, DollarSign, RefreshCw, Settings, Gift, List, Eye, Trash2 } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const {
@@ -74,6 +74,50 @@ export default function AdminDashboardPage() {
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
+  // Portfolio CMS Manager states
+  const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
+  const [portfolioError, setPortfolioError] = useState("");
+
+  const fetchPortfolioItems = async () => {
+    try {
+      setPortfolioLoading(true);
+      const res = await fetch('/api/portfolio');
+      if (res.ok) {
+        const data = await res.json();
+        setPortfolioItems(data);
+      } else {
+        setPortfolioError("Failed to load portfolio items");
+      }
+    } catch (err) {
+      console.error(err);
+      setPortfolioError("An error occurred while fetching portfolio items");
+    } finally {
+      setPortfolioLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPortfolioItems();
+  }, []);
+
+  const handleDeletePortfolioItem = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this portfolio item?")) return;
+    try {
+      const res = await fetch(`/api/portfolio/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setPortfolioItems(prev => prev.filter(item => item.id !== id));
+      } else {
+        alert("Failed to delete portfolio item");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error occurred while deleting item");
+    }
+  };
+
   // Rewards Config edit state
   const [silverCred, setSilverCred] = useState(rewardConfig?.silverCredits || 200);
   const [goldCred, setGoldCred] = useState(rewardConfig?.goldCredits || 350);
@@ -134,6 +178,7 @@ export default function AdminDashboardPage() {
       if (res.ok) {
         setUploadSuccess(true);
         setImgUrl("");
+        fetchPortfolioItems();
         setTimeout(() => setUploadSuccess(false), 3000);
       } else {
         setUploadError(data.error || 'Failed to upload portfolio item.');
@@ -516,6 +561,77 @@ export default function AdminDashboardPage() {
                     {isUploading ? "Uploading..." : "Upload to Portfolio"}
                   </button>
                 </form>
+              </div>
+
+              {/* Portfolio Items Manager (Full width) */}
+              <div className="glass-card p-6 rounded-cards border border-[rgba(229,198,135,0.15)] shadow-2xl flex flex-col gap-6">
+                <div className="flex justify-between items-center border-b border-[rgba(229,198,135,0.15)] pb-3">
+                  <h3 className="font-playfair text-xl font-bold text-white">
+                    Manage Portfolio Gallery
+                  </h3>
+                  <span className="text-xs text-[#F2E7D8]/60">
+                    {portfolioItems.length} items in gallery
+                  </span>
+                </div>
+
+                {portfolioLoading ? (
+                  <div className="py-12 flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-[#E5C687]"></div>
+                  </div>
+                ) : portfolioError ? (
+                  <div className="text-center text-xs text-[#C94C4C] py-8">
+                    {portfolioError}
+                  </div>
+                ) : portfolioItems.length === 0 ? (
+                  <div className="text-center text-xs text-[#F2E7D8]/50 py-12">
+                    No portfolio items found. Add items using the editor above.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {portfolioItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="group relative border border-[rgba(229,198,135,0.1)] rounded-xl overflow-hidden bg-[#2A1F1A]/35 hover:border-[#E5C687]/40 transition-all duration-300 flex flex-col shadow-lg"
+                      >
+                        {/* Thumbnail */}
+                        <div className="aspect-[4/3] relative w-full overflow-hidden bg-black/40">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image_url}
+                            alt={item.title}
+                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                          />
+                          {/* Category Badge */}
+                          <span className="absolute top-2.5 left-2.5 text-[9px] bg-[#1F1713]/85 text-[#E5C687] border border-[rgba(229,198,135,0.2)] px-2 py-0.5 rounded-full font-poppins tracking-wider font-semibold uppercase">
+                            {item.category}
+                          </span>
+                        </div>
+
+                        {/* Details */}
+                        <div className="p-4 flex flex-col flex-grow gap-1">
+                          <h4 className="font-poppins font-medium text-xs text-white truncate">
+                            {item.title}
+                          </h4>
+                          <p className="text-[10px] text-[#F2E7D8]/60 line-clamp-2 leading-relaxed">
+                            {item.description || "No configuration details"}
+                          </p>
+                          <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-white/5">
+                            <span className="text-[9px] text-[#F2E7D8]/40 font-mono">
+                              {item.id}
+                            </span>
+                            <button
+                              onClick={() => handleDeletePortfolioItem(item.id)}
+                              className="text-[#C94C4C] hover:text-[#C94C4C]/80 hover:bg-[#C94C4C]/10 p-1.5 rounded-lg transition-all"
+                              title="Delete Item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>
